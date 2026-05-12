@@ -61,6 +61,10 @@ def default_data_root() -> Path:
     return script_dir() / "datasets"
 
 
+def default_output_root() -> Path:
+    return script_dir() / "outputs"
+
+
 def download_repo(repo_id: str, local_dir: Path, *, token: Optional[str] = None) -> None:
     from huggingface_hub import snapshot_download
 
@@ -151,13 +155,13 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         "--output-jsonl",
         type=Path,
         default=None,
-        help="Pipeline output JSONL (default: <data-root>/wealth_trace_output.jsonl)",
+        help="Pipeline output JSONL (default: <script_dir>/outputs/wealth_trace_output.jsonl)",
     )
     p.add_argument("--deepseek-script", type=Path, default=None, help="Path to deepseek_think_eval.py")
     p.add_argument("--workers", type=int, default=1)
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--think-budget", type=int, default=2048)
-    p.add_argument("--answer-max-tokens", type=int, default=1024)
+    p.add_argument("--answer-max-tokens", type=int, default=2048)
     p.add_argument("--temperature", type=float, default=0.0)
     p.add_argument(
         "--model",
@@ -219,7 +223,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(f'  python "{Path(__file__).name}" --skip-download --run-deepseek --wealth-json "{wealth_path}"')
         return 0
 
-    out_path = args.output_jsonl or (data_root / "wealth_trace_output.jsonl")
+    out_path = args.output_jsonl or (default_output_root() / "wealth_trace_output.jsonl")
     ds_script = args.deepseek_script or resolve_deepseek_script()
 
     extra: List[str] = [

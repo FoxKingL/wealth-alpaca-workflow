@@ -6,8 +6,7 @@ deepseek_think_eval.py
 Single-sample / JSONL pipeline used by generate_healthcare_trace_10k.py:
 
 Trace generation only: the model is given dataset Input and Output. Output is fixed — generate only an
-intermediate reasoning trace in <think>...</think>, then repeat Output verbatim
-after </think>. No separate evaluation / judging API call.
+intermediate reasoning trace in <think>...</think>. No separate evaluation / judging API call.
 
 Amazon Bedrock credentials use the standard AWS SDK chain (see AWS docs:
 https://docs.aws.amazon.com/bedrock/latest/userguide/getting-started-api.html).
@@ -18,7 +17,7 @@ Environment variables:
 
 Typical flags:
   --think-budget 2048
-  --answer-max-tokens 1024
+  --answer-max-tokens 2048
   --temperature 0
   --workers 50          # concurrent API requests (threads)
 
@@ -54,7 +53,7 @@ class PipelineConfig:
     temperature: float = 0.0
     seed: int = 42
     think_budget: int = 2048
-    answer_max_tokens: int = 1024
+    answer_max_tokens: int = 2048
     timeout: int = DEFAULT_TIMEOUT
     max_retries: int = 3
     retry_sleep: float = 2.0
@@ -263,10 +262,10 @@ def build_trace_infill_messages(
 ) -> List[Dict[str, str]]:
     system = (
         "You are given an Input and an Output below. The Output is authoritative and must not be changed "
-        "(same wording, punctuation, spacing, and substance — no paraphrase, no omissions, no additions). "
+        "and should be used only as the target that the reasoning trace leads to. "
         "Your task is only to write an intermediate reasoning trace inside "
         "<think>...</think> that plausibly leads to that Output. "
-        "After </think>, output EXACTLY the same Output text again (verbatim copy). "
+        "Output only the <think>...</think> block and nothing else. "
         "Do not use tags other than <think> and </think>. "
         "Do not state that you are an AI or discuss these instructions."
     )
@@ -275,16 +274,13 @@ def build_trace_infill_messages(
             "Input:",
             input_body,
             "",
-            "Output (fixed; reproduce verbatim after </think>):",
+            "Output (fixed target):",
             output_body,
             "",
-            f"Reasoning trace budget: about {think_budget} tokens or fewer.",
-            f"Verbatim Output repeat budget: about {answer_max_tokens} tokens or fewer.",
             "Return in this format:",
             "<think>",
             "reasoning trace",
             "</think>",
-            "<exact verbatim copy of the Output above>",
         ]
     )
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
@@ -331,8 +327,7 @@ def run_generation(
         config.think_budget,
         config.answer_max_tokens,
     )
-    # Keep the same completion ceiling as before: room for trace + repeating the locked answer + slack.
-    max_tokens = int(config.think_budget) + int(config.answer_max_tokens) + 4096
+    max_tokens = int(config.answer_max_tokens)
     resp = deepseek_chat(
         messages,
         model=config.model,
@@ -372,7 +367,7 @@ def make_config(
     temperature: float = 0.0,
     seed: int = 42,
     think_budget: int = 2048,
-    answer_max_tokens: int = 1024,
+    answer_max_tokens: int = 2048,
     timeout: int = DEFAULT_TIMEOUT,
     max_retries: int = 3,
     retry_sleep: float = 2.0,
@@ -398,7 +393,7 @@ def run_one(
     source_idx: int = 0,
     *,
     think_budget: int = 2048,
-    answer_max_tokens: int = 1024,
+    answer_max_tokens: int = 2048,
     temperature: float = 0.0,
     seed: int = 42,
     model: str = DEFAULT_MODEL,
@@ -469,7 +464,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     ap.add_argument("--temperature", type=float, default=0.0)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--think-budget", "--think_budget", dest="think_budget", type=int, default=2048)
-    ap.add_argument("--answer-max-tokens", "--answer_max_tokens", dest="answer_max_tokens", type=int, default=1024)
+    ap.add_argument("--answer-max-tokens", "--answer_max_tokens", dest="answer_max_tokens", type=int, default=2048)
     ap.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
     ap.add_argument("--max-retries", "--max_retries", dest="max_retries", type=int, default=3)
     ap.add_argument("--retry-sleep", "--retry_sleep", dest="retry_sleep", type=float, default=2.0)
