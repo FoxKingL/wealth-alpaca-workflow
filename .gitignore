@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+
+# Local data & secrets (do not commit)
+datasets/
+*.env
+.env.*
+*.tmp.jsonl
+wealth_trace_output.jsonl
+test_samples/
+*_out.jsonl
+
+# IDE
+.idea/
+.vscode/
+*.swp
